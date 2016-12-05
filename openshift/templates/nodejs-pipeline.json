@@ -60,7 +60,6 @@ objects:
         jenkinsPipelineStrategy: {}
       source:
         git:
-          ref: acme-demo
           uri: https://github.com/goern/node-echo.git
         type: Git
       output:
