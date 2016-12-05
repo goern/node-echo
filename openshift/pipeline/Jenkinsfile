@@ -4,27 +4,21 @@ node('nodejs') {
   }
 
   parallel(
-    acmeSonar: {
-      stage('trigger SonarQube scan') {
+    bayesianSonar: {
+      stage('trigger Bayesian scan') {
+        def scannerHome = tool 'SonarQube Scanner 2.8';
+        
         // lets run a analysis
-        withSonarQubeEnv('ACME SonarQube Default') {
-          // and profit from our maven cache
-          artifactoryMaven.run pom: 'kitchensink/pom.xml', goals: 'org.sonarsource.scanner.maven:sonar-maven-plugin:3.2:sonar'
+        withSonarQubeEnv('ACME SonarQube Bayesian') {
+            sh "${scannerHome}/bin/sonar-scanner"
         }
       }
     },
-    bayesianSonar: {
-      stage('trigger Bayesian scan') {
-        // lets run a analysis
-        withSonarQubeEnv('ACME SonarQube Bayesian') {
-          // and profit from our maven cache
-          artifactoryMaven.run pom: 'kitchensink/pom.xml', goals: 'org.sonarsource.scanner.maven:sonar-maven-plugin:3.2:sonar'
-        }
+    deploy: {
+      stage('deploy') {
+        openshiftDeploy(deploymentConfig: 'nodejs-ex')
       }
     }
   )
 
-  stage('deploy') {
-    openshiftDeploy(deploymentConfig: 'nodejs-ex')
-  }
 }

@@ -59,9 +59,10 @@ objects:
         type: JenkinsPipeline
         jenkinsPipelineStrategy: {}
       source:
+        type: Git
         git:
           uri: https://github.com/goern/node-echo.git
-        type: Git
+        contextDir: openshift/pipeline
       output:
         to:
           kind: ImageStreamTag
