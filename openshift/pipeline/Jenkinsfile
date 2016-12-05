@@ -1,6 +1,30 @@
 node('nodejs') {
-  stage 'build'
-  openshiftBuild(buildConfig: 'nodejs-ex', showBuildLogs: 'true')
-  stage 'deploy'
-  openshiftDeploy(deploymentConfig: 'nodejs-ex')
+  stage('build') {
+    openshiftBuild(buildConfig: 'nodejs-ex', showBuildLogs: 'true')
+  }
+
+  parallel(
+    acmeSonar: {
+      stage('trigger SonarQube scan') {
+        // lets run a analysis
+        withSonarQubeEnv('ACME SonarQube Default') {
+          // and profit from our maven cache
+          artifactoryMaven.run pom: 'kitchensink/pom.xml', goals: 'org.sonarsource.scanner.maven:sonar-maven-plugin:3.2:sonar'
+        }
+      }
+    },
+    bayesianSonar: {
+      stage('trigger Bayesian scan') {
+        // lets run a analysis
+        withSonarQubeEnv('ACME SonarQube Bayesian') {
+          // and profit from our maven cache
+          artifactoryMaven.run pom: 'kitchensink/pom.xml', goals: 'org.sonarsource.scanner.maven:sonar-maven-plugin:3.2:sonar'
+        }
+      }
+    }
+  )
+
+  stage('deploy') {
+    openshiftDeploy(deploymentConfig: 'nodejs-ex')
+  }
 }
