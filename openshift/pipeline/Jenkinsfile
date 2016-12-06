@@ -1,10 +1,24 @@
+#!/usr/bin/groovy
+
+// lets allow the VERSION_PREFIX to be specified as a parameter to the build
+// but if not lets just default to 1.0
+def versionPrefix = ""
+try {
+  versionPrefix = VERSION_PREFIX
+} catch (Throwable e) {
+  versionPrefix = "0.1.0"
+}
+
 node('nodejs') {
-  stage('build') {
+  stage('OpenShift: build') {
     openshiftBuild(buildConfig: 'nodejs-ex', showBuildLogs: 'true')
   }
 
   parallel(
     bayesianSonar: {
+      stage('SCM: checkout') {
+        git url: 'https://github.com/goern/node-echo.git'
+      }
       stage('trigger Bayesian scan') {
         def scannerHome = tool 'SonarQube Scanner 2.8';
         
@@ -15,10 +29,46 @@ node('nodejs') {
       }
     },
     deploy: {
-      stage('deploy') {
+      stage('OpenShifT: deploy') {
         openshiftDeploy(deploymentConfig: 'nodejs-ex')
       }
     }
   )
 
+  stage('scan artifact (container image)') {
+    echo 'Let us scan the artifact jenkins just produced'
+    // TODO
+  }
+
+  stage('promote to test (same project)') {
+    openshiftDeploy(deploymentConfig: 'eap-app')
+  }
+
+  stage('conduct integration tests') {
+    echo 'lets run some integration test suite'
+  }
+
+  stage('approval for TEST') {
+    mattermostSend color: 'good', message: 'some test is waiting for approval', endpoint: 'https://mm.os.ci.centos.org/hooks/fcxf1ji46j86dqnzwx8no68gsh'
+
+    timeout(time:2, unit:'DAYS') {
+      input message:'Approve tests?' // , submitter: 'developer'
+    }
+  }
+
+  stage('sign candidate artifact') {
+    echo 'now we sign the candidate container images that gets promoted to test'
+  }
+
+  stage('conduct final test stage') {
+    echo 'lets run some test suite'
+  }
+
+  stage('approval for PROD') {
+    mattermostSend color: 'good', message: 'some test is waiting for approval', endpoint: 'https://mm.os.ci.centos.org/hooks/fcxf1ji46j86dqnzwx8no68gsh'
+
+    timeout(time:1, unit:'DAYS') {
+      input message:'Approve tests and promote to PRODUCTION?' // , submitter: 'product-owner'
+    }
+  }
 }
